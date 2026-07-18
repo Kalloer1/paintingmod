@@ -35,33 +35,35 @@ public final class ModConfigFiles {
     // ---- defaults (written once if the file is missing) ----
 
     public static final String DEFAULT_PROMPT =
-            "你是《我的世界 Java版 1.21.1 AI绘画奖励转换器》。\n" +
+            "你是《我的世界 Java 版 1.21.1》的「绘画奖励鉴定器」。\n" +
             "\n" +
-            "你的唯一任务：\n" +
-            "分析玩家在画板上的图案，推测玩家最想获得的 Minecraft 奖励，然后从下方【可发放清单】(来自 rewards.json) 中选择一个合法奖励。\n" +
+            "你的唯一任务：分析玩家在画板上的像素画，判断「一个 MC 玩家画了这个图案，最可能想要获得什么游戏奖励」，然后从下方【可发放清单】里选一个最匹配的奖励。\n" +
             "\n" +
-            "你不是现实图片识别 AI。不要回答“现实世界是什么”“这是什么真实物体”之类的问题。\n" +
+            "你不是现实图片识别 AI。不要回答「这是什么现实物体」「这是哪种真实动物」之类的问题。\n" +
+            "始终站在 Minecraft 玩家视角思考：画的是红石火把→玩家多半想要红石类→给 redstone_torch；画的是苦力怕的脸→玩家想要苦力怕→给 creeper。\n" +
             "\n" +
-            "你的思考方式必须是：\n" +
-            "“一个 Minecraft 玩家画了这个东西，他最可能想获得什么？”\n" +
-            "始终站在 MC 玩家视角，把图案映射成游戏内能得到的奖励。\n" +
+            "【输出要求，必须严格遵守】\n" +
+            "1. 只输出正好 7 行中文文本，行与行之间用换行分隔。\n" +
+            "2. 绝对不要输出英文、JSON、Markdown、```代码块、任何额外解释或结束语。\n" +
+            "3. 第 1 行是画面描述，第 2 行是思考过程（简短中文，说明你如何从画面联想到奖励），第 3–7 行是结构化结果。\n" +
+            "4. 如果开启了深度思考，思考内容也只允许用中文，禁止出现英文单词或代码片段。\n" +
             "\n" +
-            "请严格按以下格式输出 7 行，不要输出任何额外解释文字：\n" +
-            "描述：<用 2-4 句中文描述画面主体、构图与颜色，并说明它最像游戏里的什么>\n" +
-            "思考过程：<2-3 句，说明你如何从画面联想到这个奖励，例如：画的是红石火把→玩家多半想要红石类→给 redstone_torch>\n" +
+            "请严格按以下 7 行格式输出：\n" +
+            "描述：<用 2-4 句中文描述画面主体、颜色、构图，并说它最像游戏里的什么>\n" +
+            "思考过程：<2-3 句中文，说明你如何从画面联想到最终奖励，例如：画的是红石火把→玩家多半想要红石类→给 redstone_torch>\n" +
             "方向：物品 <w1> 生物 <w2> 状态 <w3>\n" +
-            "物品：<若画的是清单内物品/方块/结构，给出 minecraft:<id>，否则写 无>\n" +
+            "物品：<若画的是清单内物品/方块，给出 minecraft:<id>，否则写 无>\n" +
             "生物：<若画的是清单内生物，给出 minecraft:<id>，否则写 无>\n" +
-            "状态：<若画的是某种 buff/符号，给出效果英文名或中文名，否则写 无>\n" +
+            "状态：<若画的是某种 buff/符号，给出效果英文名，否则写 无>\n" +
             "天气：<若画的是天气/雷电相关，写 晴|雨|雷暴|闪电，否则写 无>\n" +
-            "指令：<若画意是切换某种游戏状态(如白天/黑夜/晴天)，给出清单内关键词，否则写 无>\n" +
+            "指令：<若画意是切换游戏状态(如白天/黑夜/晴天/下雨)，给出清单内关键词，否则写 无>\n" +
             "\n" +
             "规则：\n" +
             "1. 三个方向权重 w1 w2 w3 用 0~1 之间的小数，反映「这幅画更偏向哪一种结果」。\n" +
-            "2. 物品/生物/指令必须来自下方【可发放清单】，绝不可编造清单外的内容（尤其不可出现 command_block 等创造/指令专用方块，也不可出现现实物品）。\n" +
+            "2. 物品/生物/状态/指令必须全部来自下方【可发放清单】，绝不可编造清单外的内容（尤其不可出现 command_block 等创造/指令专用方块，也不可出现现实物品）。\n" +
             "3. 状态效果举例：眼睛→night_vision；盾牌→resistance；心脏/红心→regeneration；火焰/火→fire_resistance；羽毛/翅膀→slow_falling；药水→选一个合适的 buff。\n" +
             "4. 天气类优先级最高：闪电/雷电符号→天气 闪电；太阳/晴天→天气 晴；乌云下雨→天气 雨；暴风雨雷电→天气 雷暴。\n" +
-            "5. 指令类：若画意是切换某种游戏状态(白天/黑夜/晴天/加速时间等)，在「指令」行给出【可发放清单】里对应的关键词。\n" +
+            "5. 指令类：若画意是切换某种游戏状态(白天/黑夜/晴天/下雨)，在「指令」行给出【可发放清单】里对应的关键词。\n" +
             "6. 若完全不像任何东西，各方向都写 无，系统会兜底发一个清单内的物品。\n" +
             "只输出那 7 行，不要任何额外文字。";
 
@@ -168,11 +170,11 @@ public final class ModConfigFiles {
             "minecraft:music_disc_cat", "minecraft:music_disc_blocks", "minecraft:music_disc_chirp", "minecraft:music_disc_far",
             "minecraft:music_disc_mall", "minecraft:music_disc_mellohi", "minecraft:music_disc_stal", "minecraft:music_disc_strad",
             "minecraft:music_disc_ward", "minecraft:music_disc_11", "minecraft:music_disc_wait", "minecraft:music_disc_5",
-            "minecraft:music_disc_pigstep", "minecraft:music_disc_othersid", "minecraft:music_disc_relic", "minecraft:saddle",
+            "minecraft:music_disc_pigstep", "minecraft:music_disc_otherside", "minecraft:music_disc_relic", "minecraft:saddle",
             "minecraft:lead", "minecraft:name_tag", "minecraft:dragon_head",
             "minecraft:creeper_head", "minecraft:skeleton_skull", "minecraft:wither_skeleton_skull", "minecraft:zombie_head",
             "minecraft:player_head", "minecraft:dragon_breath", "minecraft:phantom_membrane", "minecraft:shulker_shell",
-            "minecraft:turtle_scute", "minecraft:scute", "minecraft:echo_shard", "minecraft:recovery_compass",
+            "minecraft:turtle_scute", "minecraft:echo_shard", "minecraft:recovery_compass",
             "minecraft:amethyst_cluster", "minecraft:big_dripleaf", "minecraft:small_dripleaf", "minecraft:spore_blossom",
             "minecraft:azalea_leaves", "minecraft:flowering_azalea", "minecraft:moss_block", "minecraft:moss_carpet",
             "minecraft:glow_lichen", "minecraft:cave_vines", "minecraft:weeping_vines", "minecraft:twisting_vines",
@@ -197,13 +199,13 @@ public final class ModConfigFiles {
             "minecraft:skeleton", "minecraft:stray", "minecraft:wither_skeleton", "minecraft:spider", "minecraft:cave_spider",
             "minecraft:creeper", "minecraft:slime", "minecraft:magma_cube", "minecraft:zoglin", "minecraft:hoglin",
             "minecraft:piglin", "minecraft:piglin_brute", "minecraft:zombified_piglin", "minecraft:blaze", "minecraft:ghast",
-            "minecraft:ender_man", "minecraft:endermite", "minecraft:shulker", "minecraft:guardian", "minecraft:elder_guardian",
+            "minecraft:enderman", "minecraft:endermite", "minecraft:shulker", "minecraft:guardian", "minecraft:elder_guardian",
             "minecraft:witch", "minecraft:ravager", "minecraft:vex", "minecraft:evoker", "minecraft:vindicator",
             "minecraft:pillager", "minecraft:iron_golem", "minecraft:snow_golem", "minecraft:warden", "minecraft:allay",
             "minecraft:ender_dragon", "minecraft:wither", "minecraft:phantom", "minecraft:silverfish",
-            "minecraft:strider", "minecraft:axolotl", "minecraft:glow_squid", "minecraft:squid", "minecraft:dolphin",
+            "minecraft:strider", "minecraft:glow_squid", "minecraft:squid", "minecraft:dolphin",
             "minecraft:turtle", "minecraft:cod", "minecraft:salmon", "minecraft:tropical_fish", "minecraft:pufferfish",
-            "minecraft:creaking", "minecraft:bogged", "minecraft:breeze", "minecraft:armadillo"
+            "minecraft:bogged", "minecraft:breeze", "minecraft:armadillo"
         };
         root.add("entities", array(entities));
 
