@@ -62,28 +62,28 @@ public class AiSettingsScreen extends Screen {
                     cfg.showThinking = !cfg.showThinking;
                     b.setMessage(Component.literal(showThinkLabel(cfg.showThinking)));
                 })
-                .pos(cx - w / 2, 202)
+                .pos(cx - w / 2, 200)
                 .size(w, 16)
                 .build();
         this.addRenderableWidget(showThinkBox);
 
-        // 温度 / 最大 token 同排
-        addLabel(cx - w / 2 + 4, 204, "温度 temperature (0~1)");
-        tempBox = new EditBox(font, cx - w / 2, 220, 150, h, Component.literal(""));
+        // 温度 / 最大 token 同排（整体下移，避免与上方开关文字重叠）
+        addLabel(cx - w / 2 + 4, 224, "温度 temperature (0~1)");
+        tempBox = new EditBox(font, cx - w / 2, 240, 150, h, Component.literal(""));
         tempBox.setMaxLength(6);
         tempBox.setValue(String.valueOf(cfg.temperature));
         this.addRenderableWidget(tempBox);
 
-        addLabel(cx + 10 + 4, 204, "最大 Token max_tokens");
-        tokBox = new EditBox(font, cx + 10, 220, 150, h, Component.literal(""));
+        addLabel(cx + 10 + 4, 224, "最大 Token max_tokens");
+        tokBox = new EditBox(font, cx + 10, 240, 150, h, Component.literal(""));
         tokBox.setMaxLength(6);
         tokBox.setValue(String.valueOf(cfg.maxTokens));
         this.addRenderableWidget(tokBox);
 
-        addLabel(cx, 252, "智谱示例 base: https://open.bigmodel.cn/api/paas/v4   model: glm-4.6v-flashx");
+        addLabel(cx, 266, "智谱示例 base: https://open.bigmodel.cn/api/paas/v4   model: glm-4.6v-flashx");
 
         // 保存 / 返回 按钮
-        this.addRenderableWidget(makeButton(cx - 150, 276, 140, 22, "保存并关闭", () -> {
+        this.addRenderableWidget(makeButton(cx - 150, 288, 140, 22, "保存并关闭", () -> {
             AiConfig c = AiConfig.get();
             if (!baseBox.getValue().isBlank()) c.apiBase = baseBox.getValue().trim();
             c.apiToken = tokenBox.getValue().trim();
