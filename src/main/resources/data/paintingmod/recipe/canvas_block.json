@@ -1,5 +1,6 @@
 {
   "type": "minecraft:crafting_shaped",
+  "category": "misc",
   "pattern": [
     "PPP",
     "PSP",
@@ -10,7 +11,7 @@
     "S": { "item": "minecraft:stick" }
   },
   "result": {
-    "item": "paintingmod:canvas_block",
+    "id": "paintingmod:canvas_block",
     "count": 1
   }
 }

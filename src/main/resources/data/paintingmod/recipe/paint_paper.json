@@ -1,9 +1,11 @@
 {
   "type": "minecraft:crafting_shapeless",
+  "category": "misc",
   "ingredients": [
     { "item": "minecraft:paper" }
   ],
   "result": {
-    "item": "paintingmod:paint_paper"
+    "id": "paintingmod:paint_paper",
+    "count": 1
   }
 }
