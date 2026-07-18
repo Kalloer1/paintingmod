@@ -717,8 +717,26 @@ public class DrawingScreen extends Screen {
                 yield rl != null ? new Effect(CanvasAppraisalPacket.EFFECT_POTION, rl.toString(), (byte) 0, desc) : null;
             }
             case "command" -> {
-                String cmd = o.has("cmd") ? o.get("cmd").getAsString() : null;
-                yield (cmd != null && RewardTable.isCommandAllowed(cmd))
+                // The AI may put the command in either `cmd` or `id` (our JSON prompt uses
+                // both keys; some models answer with id only, e.g. {"action":"command","id":"weather rain"}).
+                // Fall back to id so those replies aren't mis-read as a plain text and dropped to the
+                // random-reward fallback (which used to hand out a random item like 活塞).
+                String cmd = o.has("cmd") ? o.get("cmd").getAsString()
+                          : (o.has("id") ? o.get("id").getAsString() : null);
+                if (cmd == null) yield null;
+                String lc = cmd.toLowerCase(java.util.Locale.ROOT);
+                // Weather-style commands are routed to the dedicated weather effect so they work
+                // out of the box (no rewards.json needed) and read nicely as 下雨 / 晴天 / 雷暴 / 闪电.
+                if (lc.contains("lightning") || lc.contains("闪电"))
+                    yield new Effect(CanvasAppraisalPacket.EFFECT_LIGHTNING, null, (byte) 0, desc);
+                if (lc.contains("thunder") || lc.contains("雷暴") || lc.contains("雷"))
+                    yield new Effect(CanvasAppraisalPacket.EFFECT_WEATHER_THUNDER, null, (byte) 0, desc);
+                if (lc.contains("clear") || lc.contains("晴"))
+                    yield new Effect(CanvasAppraisalPacket.EFFECT_WEATHER_CLEAR, null, (byte) 0, desc);
+                if (lc.contains("rain") || lc.contains("雨") || lc.contains("weather"))
+                    yield new Effect(CanvasAppraisalPacket.EFFECT_WEATHER_RAIN, null, (byte) 0, desc);
+                // Any other command only runs if it is allow-listed in rewards.json.
+                yield RewardTable.isCommandAllowed(cmd)
                         ? new Effect(CanvasAppraisalPacket.EFFECT_COMMAND, cmd, (byte) 0, desc) : null;
             }
             case "weather" -> {
