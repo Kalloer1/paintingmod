@@ -283,6 +283,13 @@ public class DrawingScreen extends Screen {
 
     private static int clamp(int v) { return Math.max(0, Math.min(255, v)); }
 
+    private static String truncateThinking(String s) {
+        if (s == null) return "";
+        s = s.replace('\n', ' ').trim();
+        if (s.length() <= 200) return s;
+        return s.substring(0, 200) + "…";
+    }
+
     private boolean playerHas(Item item) {
         var p = Minecraft.getInstance().player;
         if (p == null) return false;
@@ -530,7 +537,7 @@ public class DrawingScreen extends Screen {
                     if (AiConfig.get().showThinking && aiThinking != null && !aiThinking.isBlank()
                             && Minecraft.getInstance().player != null)
                         Minecraft.getInstance().player.sendSystemMessage(
-                                Component.literal("§d[AI 思考过程] §f" + aiThinking));
+                                Component.literal("§d[AI 思考过程] §f" + truncateThinking(aiThinking)));
                 },
                 err -> { aiBusy = false; aiThinking = ""; aiResult = err; });
     }
@@ -1015,7 +1022,7 @@ public class DrawingScreen extends Screen {
             for (int i = 0; i < n; i++)
                 g.drawString(font, lines.get(i), stripX + 6, stripY + 18 + i * 11, 0xFFE8E8E8);
             if (AiConfig.get().showThinking && aiThinking != null && !aiThinking.isBlank()) {
-                String head = "§dAI 思考：" + aiThinking;
+                String head = "§dAI 思考：" + truncateThinking(aiThinking);
                 var tl = font.split(Component.literal(head), stripW - 12);
                 int ty = stripY + 18 + n * 11 + 1;
                 if (!tl.isEmpty())

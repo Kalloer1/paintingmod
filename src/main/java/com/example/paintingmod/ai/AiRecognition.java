@@ -131,7 +131,12 @@ public final class AiRecognition {
         message.addProperty("role", "user");
         message.add("content", content);
 
+        JsonObject system = new JsonObject();
+        system.addProperty("role", "system");
+        system.addProperty("content", "你是一个简洁的《我的世界 1.21.1》绘画奖励鉴定器。只输出用户要求的正好 7 行中文，不要输出任何分析、推理或额外文字。");
+
         JsonArray messages = new JsonArray();
+        messages.add(system);
         messages.add(message);
 
         JsonObject root = new JsonObject();
