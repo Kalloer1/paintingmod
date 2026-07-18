@@ -1,0 +1,10 @@
+{
+  "block.paintingmod.canvas_block": "Canvas Board",
+  "item.paintingmod.paint_paper": "Paint Paper",
+  "item.paintingmod.universal_dye": "Universal Dye",
+  "item.paintingmod.magic_canvas_stub": "Magic Canvas",
+  "creativeTab.paintingmod.pixel_canvas": "Pixel Paint",
+  "screen.paintingmod.title": "Pixel Paint",
+  "screen.paintingmod.size": "Resize Paper",
+  "screen.paintingmod.ai_settings": "Spellbook"
+}

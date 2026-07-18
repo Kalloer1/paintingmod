@@ -1,0 +1,26 @@
+# Generated / build output
+build/
+bin/
+out/
+run/
+runClient/
+runServer/
+src/generated/
+.gradle/
+.gradle/
+*.class
+
+# Keep gradle wrapper
+!gradle/wrapper/gradle-wrapper.jar
+
+# OS / IDE
+.DS_Store
+*.iml
+.idea/
+.vscode/
+.eclipse/
+
+# Stray gradle distribution download (not needed in repo)
+gradle-*.zip
+# Extracted gradle distribution (use the wrapper instead)
+gradle-8.10.1/

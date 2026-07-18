@@ -1,0 +1,17 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[mods]]
+modId="paintingmod"
+version="0.1.0"
+displayName="Pixel Canvas"
+description="An in-game pixel canvas: draw on a block, sync it to other players, and (soon) let AI recognize your art."
+authors="Kalloer1"
+
+[[dependencies.paintingmod]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.0,)"
+ordering="NONE"
+side="BOTH"

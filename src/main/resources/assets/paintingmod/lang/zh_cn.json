@@ -1,0 +1,10 @@
+{
+  "block.paintingmod.canvas_block": "画板",
+  "item.paintingmod.paint_paper": "画纸",
+  "item.paintingmod.universal_dye": "万能染料",
+  "item.paintingmod.magic_canvas_stub": "魔法画稿",
+  "creativeTab.paintingmod.pixel_canvas": "像素画纸",
+  "screen.paintingmod.title": "像素画纸",
+  "screen.paintingmod.size": "调整画纸尺寸",
+  "screen.paintingmod.ai_settings": "魔法书"
+}

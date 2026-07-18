@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "PPP",
+    "PSP",
+    "PPP"
+  ],
+  "key": {
+    "P": { "item": "minecraft:paper" },
+    "S": { "item": "minecraft:stick" }
+  },
+  "result": {
+    "item": "paintingmod:canvas_block",
+    "count": 1
+  }
+}

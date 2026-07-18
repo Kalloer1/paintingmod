@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version '1.0.21'
+}
+
+version = project.mod_version
+group = project.maven_group
+base { archivesName = project.archives_base_name }
+
+repositories {
+    maven { url = "https://nexus.neoforged.net/repository/minecraft-libraries/" }
+}
+
+neoForge {
+    version = project.neoforge_version
+    runs {
+        client { client() }
+        server { server() }
+        data {
+            data()
+            programArguments.addAll '--mod', 'paintingmod', '--all',
+                '--output', file('src/generated/resources/').getAbsolutePath(),
+                '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+    }
+    mods {
+        paintingmod {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testImplementation "net.neoforged:testframework:${project.neoforge_version}"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+tasks.named('test', Test) { useJUnitPlatform() }
