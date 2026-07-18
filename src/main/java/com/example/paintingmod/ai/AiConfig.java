@@ -29,6 +29,9 @@ public final class AiConfig {
     /** GLM 系模型开启「深度思考」后，推理过程会出现在响应的 reasoning_content 字段，
      *  抓出来显示给玩家。非 GLM 模型（如硅基流动 Qwen）忽略此开关。 */
     public boolean think = true;
+    /** 是否在界面结果与聊天栏展示 AI 的「思考过程」。与 think 解耦：
+     *  可以只让模型在后台思考（think=true）但不向玩家显示（showThinking=false）。 */
+    public boolean showThinking = true;
     /** 生成温度，0(确定性)~1(发散)，默认 0.5。 */
     public double temperature = 0.5;
     /** 单次回复最大 token，需覆盖「思考 + 6 行结果」，默认 1500。 */

@@ -1,6 +1,8 @@
 package com.example.paintingmod.ai;
 
 import com.example.paintingmod.config.ModConfigFiles;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -28,6 +30,8 @@ import java.util.Set;
  * just as reachable as popular ones — the model is told the exact vocabulary it may use.
  */
 public final class RewardTable {
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
     public static final class Entry {
         public final ResourceLocation id;
         public final String name;
@@ -137,6 +141,46 @@ public final class RewardTable {
 
     /** Re-read config/paintingmod/rewards.json so edits take effect without a restart. */
     public static void reload() { loadJson(); }
+
+    /**
+     * Build a complete rewards.json from the live game registry — every item, entity and
+     * status effect that is currently registered (vanilla AND any loaded mods), minus the
+     * blacklist. This is what gets written to config/paintingmod/rewards.json the first time
+     * the mod runs, so magic appraisal can grant anything the player has installed.
+     */
+    public static String buildFullRewardsJson() {
+        JsonObject root = new JsonObject();
+
+        JsonArray items = new JsonArray();
+        for (Entry e : REG_ITEMS) items.add(e.id.toString());
+        root.add("items", items);
+
+        JsonArray entities = new JsonArray();
+        for (Entry e : REG_ENTITIES) entities.add(e.id.toString());
+        root.add("entities", entities);
+
+        JsonArray effects = new JsonArray();
+        for (MobEffect me : BuiltInRegistries.MOB_EFFECT)
+            effects.add(BuiltInRegistries.MOB_EFFECT.getKey(me).toString());
+        root.add("effects", effects);
+
+        JsonArray cmds = new JsonArray();
+        addCmd(cmds, "白天", "time set day");
+        addCmd(cmds, "黑夜", "time set night");
+        addCmd(cmds, "下雨", "weather rain");
+        addCmd(cmds, "晴天", "weather clear");
+        addCmd(cmds, "雷暴", "weather thunder");
+        root.add("commands", cmds);
+
+        return GSON.toJson(root);
+    }
+
+    private static void addCmd(JsonArray a, String key, String cmd) {
+        JsonObject o = new JsonObject();
+        o.addProperty("key", key);
+        o.addProperty("cmd", cmd);
+        a.add(o);
+    }
 
     private static void loadJson() {
         JsonObject o = ModConfigFiles.readRewards();
@@ -301,6 +345,27 @@ public final class RewardTable {
         List<String> out = new ArrayList<>();
         if (jsonLoaded && !ALLOWED_ENTITIES.isEmpty()) for (ResourceLocation id : ALLOWED_ENTITIES) out.add(id.toString());
         else for (Entry e : REG_ENTITIES) out.add(e.id.toString());
+        return out;
+    }
+
+    /** Vanilla-only ids for prompt injection — keeps the vision prompt from ballooning to
+     *  tens of thousands of tokens on modded installs. Mod items are still grantable (the
+     *  full registry lives in rewards.json); the model just won't see them listed. */
+    public static List<String> itemIdsVanilla() {
+        List<String> out = new ArrayList<>();
+        if (jsonLoaded && !ALLOWED_ITEMS.isEmpty())
+            for (ResourceLocation id : ALLOWED_ITEMS) if (id.getNamespace().equals("minecraft")) out.add(id.toString());
+        else
+            for (Entry e : REG_ITEMS) if (e.id.getNamespace().equals("minecraft")) out.add(e.id.toString());
+        return out;
+    }
+
+    public static List<String> entityIdsVanilla() {
+        List<String> out = new ArrayList<>();
+        if (jsonLoaded && !ALLOWED_ENTITIES.isEmpty())
+            for (ResourceLocation id : ALLOWED_ENTITIES) if (id.getNamespace().equals("minecraft")) out.add(id.toString());
+        else
+            for (Entry e : REG_ENTITIES) if (e.id.getNamespace().equals("minecraft")) out.add(e.id.toString());
         return out;
     }
 

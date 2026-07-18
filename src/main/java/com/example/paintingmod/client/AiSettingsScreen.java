@@ -15,7 +15,7 @@ import java.util.function.Consumer;
 public class AiSettingsScreen extends Screen {
     private final Screen parent;
     private EditBox baseBox, tokenBox, modelBox, tempBox, tokBox;
-    private Button thinkBox;
+    private Button thinkBox, showThinkBox;
 
     public AiSettingsScreen(Screen parent) {
         super(Component.translatable("screen.paintingmod.ai_settings"));
@@ -57,6 +57,16 @@ public class AiSettingsScreen extends Screen {
                 .build();
         this.addRenderableWidget(thinkBox);
 
+        // 显示思考过程开关（与「深度思考」解耦：可只让模型后台思考、不在游戏内显示）
+        showThinkBox = Button.builder(Component.literal(showThinkLabel(cfg.showThinking)), b -> {
+                    cfg.showThinking = !cfg.showThinking;
+                    b.setMessage(Component.literal(showThinkLabel(cfg.showThinking)));
+                })
+                .pos(cx - w / 2, 202)
+                .size(w, 16)
+                .build();
+        this.addRenderableWidget(showThinkBox);
+
         // 温度 / 最大 token 同排
         addLabel(cx - w / 2 + 4, 204, "温度 temperature (0~1)");
         tempBox = new EditBox(font, cx - w / 2, 220, 150, h, Component.literal(""));
@@ -79,6 +89,7 @@ public class AiSettingsScreen extends Screen {
             c.apiToken = tokenBox.getValue().trim();
             if (!modelBox.getValue().isBlank()) c.model = modelBox.getValue().trim();
             c.think = cfg.think;
+            c.showThinking = cfg.showThinking;
             try {
                 double t = Double.parseDouble(tempBox.getValue().trim());
                 c.temperature = Math.max(0.0, Math.min(1.0, t));
@@ -110,7 +121,11 @@ public class AiSettingsScreen extends Screen {
     }
 
     private static String thinkLabel(boolean on) {
-        return on ? "§d深度思考：§a开（可见 AI 推理过程）" : "§d深度思考：§c关";
+        return on ? "§d深度思考：§a开（模型侧推理）" : "§d深度思考：§c关";
+    }
+
+    private static String showThinkLabel(boolean on) {
+        return on ? "§d显示思考过程：§a开（界面+聊天栏可见）" : "§d显示思考过程：§c关";
     }
 
     @Override

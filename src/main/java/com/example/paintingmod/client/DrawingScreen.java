@@ -1,5 +1,6 @@
 package com.example.paintingmod.client;
 
+import com.example.paintingmod.ai.AiConfig;
 import com.example.paintingmod.ai.RewardTable;
 import com.example.paintingmod.canvas.PaintSource;
 import com.example.paintingmod.canvas.PaintingData;
@@ -525,8 +526,9 @@ public class DrawingScreen extends Screen {
                     aiResult = "§d魔法鉴定完成：识别为 §e" + effectLabel(e.type) + "§r。\n"
                             + (shown.isEmpty() ? "（无法识别具体内容）" : shown)
                             + "\n§7画作已封存于「魔法画稿」，奖励已发放。";
-                    // 把 AI 的推理过程发给玩家（方便复盘、下次照着画）
-                    if (aiThinking != null && !aiThinking.isBlank() && Minecraft.getInstance().player != null)
+                    // 把 AI 的推理过程发给玩家（方便复盘、下次照着画）；受「显示思考过程」开关控制
+                    if (AiConfig.get().showThinking && aiThinking != null && !aiThinking.isBlank()
+                            && Minecraft.getInstance().player != null)
                         Minecraft.getInstance().player.sendSystemMessage(
                                 Component.literal("§d[AI 思考过程] §f" + aiThinking));
                 },
@@ -597,10 +599,31 @@ public class DrawingScreen extends Screen {
         Effect je = tryParseJson(text);
         if (je != null) return je;
 
-        // weather / lightning override the weight system
-        String weather = field(lower, "天气");
-        if (weather != null) {
-            String w = weather.trim();
+        // ---- 解析结构化候选行 ----
+        String dirLine  = field(lower, "方向");
+        String itemLine = field(lower, "物品");
+        String entLine  = field(lower, "生物");
+        String effLine  = field(lower, "状态");
+        String wLine    = field(lower, "天气");
+        String cmdLine  = field(lower, "指令");
+
+        ResourceLocation itemRl = parseMcId(itemLine);
+        ResourceLocation entRl  = parseMcId(entLine);
+        ResourceLocation effRl  = resolveEffectId(effLine);
+        byte effAmp = (effLine != null && effLine.contains("强")) ? (byte) 1 : (byte) 0;
+
+        // ---- 物品优先级大于一切：物品行给出合法且真实存在的 id，就发物品 ----
+        if (itemRl != null && RewardTable.isItemAllowed(itemRl))
+            return new Effect(CanvasAppraisalPacket.EFFECT_ITEM, itemRl.toString(), (byte) 0, desc);
+        // 其次生物
+        if (entRl != null && RewardTable.isEntityAllowed(entRl))
+            return new Effect(CanvasAppraisalPacket.EFFECT_ENTITY, entRl.toString(), (byte) 0, desc);
+        // 再次状态效果
+        if (effRl != null)
+            return new Effect(CanvasAppraisalPacket.EFFECT_POTION, effRl.toString(), effAmp, desc);
+        // 然后天气
+        if (wLine != null) {
+            String w = wLine.trim();
             if (w.contains("闪电") || w.contains("lightning"))
                 return new Effect(CanvasAppraisalPacket.EFFECT_LIGHTNING, null, (byte) 0, desc);
             if (w.contains("晴") || w.contains("clear") || w.contains("sun"))
@@ -610,70 +633,14 @@ public class DrawingScreen extends Screen {
             if (w.contains("雨") || w.contains("rain"))
                 return new Effect(CanvasAppraisalPacket.EFFECT_WEATHER_RAIN, null, (byte) 0, desc);
         }
-
-        // explicit command line is authoritative (server still validates against the allowlist)
-        String cmdLine = field(lower, "指令");
+        // 最后指令（服务端仍按白名单校验）
         if (cmdLine != null) {
             String cmd = RewardTable.findCommand(cmdLine.trim());
             if (cmd != null)
                 return new Effect(CanvasAppraisalPacket.EFFECT_COMMAND, cmd, (byte) 0, desc);
         }
 
-        String dirLine = field(lower, "方向");
-        String itemLine = field(lower, "物品");
-        String entLine = field(lower, "生物");
-        String effLine = field(lower, "状态");
-
-        ResourceLocation itemRl = parseMcId(itemLine);
-        ResourceLocation entRl = parseMcId(entLine);
-        ResourceLocation effRl = resolveEffectId(effLine);
-        byte effAmp = (effLine != null && effLine.contains("强")) ? (byte) 1 : (byte) 0;
-
-        // parse the three directional weights if the AI supplied them
-        double wItem = 0, wEnt = 0, wEff = 0;
-        boolean hasWeights = false;
-        if (dirLine != null) {
-            Double a = grabNum(dirLine, "物品|item");   if (a != null) { wItem = a; hasWeights = true; }
-            Double b = grabNum(dirLine, "生物|entity"); if (b != null) { wEnt = b; hasWeights = true; }
-            Double c = grabNum(dirLine, "状态|effect"); if (c != null) { wEff = c; hasWeights = true; }
-        }
-
-        if (hasWeights) {
-            // pick the highest-weight direction that has a valid candidate id
-            record Cand(double w, byte type, ResourceLocation id, byte amp) {}
-            Cand best = null;
-            if (effRl  != null) { Cand c = new Cand(wEff,  CanvasAppraisalPacket.EFFECT_POTION,  effRl,  effAmp);    if (best == null || c.w > best.w) best = c; }
-            if (itemRl != null) { Cand c = new Cand(wItem, CanvasAppraisalPacket.EFFECT_ITEM,    itemRl, (byte) 0); if (best == null || c.w > best.w) best = c; }
-            if (entRl  != null) { Cand c = new Cand(wEnt,  CanvasAppraisalPacket.EFFECT_ENTITY,  entRl,  (byte) 0); if (best == null || c.w > best.w) best = c; }
-            if (best != null) return new Effect(best.type, best.id.toString(), best.amp, desc);
-        } else {
-            // no weights: prefer whichever candidate the AI actually supplied (potion > item > entity)
-            if (effRl  != null) return new Effect(CanvasAppraisalPacket.EFFECT_POTION, effRl.toString(),  effAmp,    desc);
-            if (itemRl != null) return new Effect(CanvasAppraisalPacket.EFFECT_ITEM,   itemRl.toString(), (byte) 0, desc);
-            if (entRl  != null) return new Effect(CanvasAppraisalPacket.EFFECT_ENTITY, entRl.toString(),  (byte) 0, desc);
-        }
-
-        // last-ditch: honour the old "效果：" directive format for backward compatibility
-        int ie = lower.indexOf("效果");
-        if (ie >= 0) {
-            String d = lower.substring(ie).replaceFirst("(?i)效果\\s*[:：]", "").trim();
-            ResourceLocation rl2 = parseMcId(d);
-            if (d.contains("闪电") || d.contains("lightning"))
-                return new Effect(CanvasAppraisalPacket.EFFECT_LIGHTNING, null, (byte) 0, desc);
-            if (d.contains("天气") || d.contains("weather") || d.contains("rain") || d.contains("thunder")) {
-                if (d.contains("晴") || d.contains("clear") || d.contains("sun"))
-                    return new Effect(CanvasAppraisalPacket.EFFECT_WEATHER_CLEAR, null, (byte) 0, desc);
-                if (d.contains("雷") || d.contains("thunder") || d.contains("暴"))
-                    return new Effect(CanvasAppraisalPacket.EFFECT_WEATHER_THUNDER, null, (byte) 0, desc);
-                return new Effect(CanvasAppraisalPacket.EFFECT_WEATHER_RAIN, null, (byte) 0, desc);
-            }
-            if ((d.contains("物品") || d.contains("item")) && rl2 != null)
-                return new Effect(CanvasAppraisalPacket.EFFECT_ITEM, rl2.toString(), (byte) 0, desc);
-            if ((d.contains("生物") || d.contains("entity")) && rl2 != null)
-                return new Effect(CanvasAppraisalPacket.EFFECT_ENTITY, rl2.toString(), (byte) 0, desc);
-        }
-
-        // nothing parsed -> always grant a real item so the appraisal always yields a grant
+        // 没有任何可识别结果 -> 兜底发一个清单内真实物品，保证鉴定总有产出
         RewardTable.Entry e = RewardTable.random();
         return new Effect(CanvasAppraisalPacket.EFFECT_ITEM, e.id.toString(), (byte) 0, desc);
     }
@@ -706,11 +673,13 @@ public class DrawingScreen extends Screen {
         return switch (action) {
             case "item", "block" -> {
                 ResourceLocation rl = parseMcId(id);
-                yield rl != null ? new Effect(CanvasAppraisalPacket.EFFECT_ITEM, rl.toString(), (byte) 0, desc) : null;
+                yield (rl != null && RewardTable.isItemAllowed(rl))
+                        ? new Effect(CanvasAppraisalPacket.EFFECT_ITEM, rl.toString(), (byte) 0, desc) : null;
             }
             case "entity", "summon" -> {
                 ResourceLocation rl = parseMcId(id);
-                yield rl != null ? new Effect(CanvasAppraisalPacket.EFFECT_ENTITY, rl.toString(), (byte) 0, desc) : null;
+                yield (rl != null && RewardTable.isEntityAllowed(rl))
+                        ? new Effect(CanvasAppraisalPacket.EFFECT_ENTITY, rl.toString(), (byte) 0, desc) : null;
             }
             case "effect", "potion" -> {
                 ResourceLocation rl = resolveEffectId(id);
@@ -819,8 +788,9 @@ public class DrawingScreen extends Screen {
     private static ResourceLocation parseMcId(String text) {
         if (text == null) return null;
         String lower = text.toLowerCase(Locale.ROOT);
+        // accept "minecraft:<id>" or bare "<id>" (-> minecraft:<id>) or "<namespace>:<id>" (mod items)
         java.util.regex.Matcher m = java.util.regex.Pattern
-                .compile("(?:ID|物品|生物|MINECRAFT)\\s*[:：]\\s*(minecraft:[a-z0-9_]+|[a-z0-9_]+)")
+                .compile("(?:ID|物品|生物|MINECRAFT)\\s*[:：]\\s*([a-z0-9_.-]+:[a-z0-9_./-]+|[a-z0-9_./-]+)")
                 .matcher(lower);
         if (m.find()) {
             String id = m.group(1);
@@ -828,8 +798,8 @@ public class DrawingScreen extends Screen {
             ResourceLocation r = ResourceLocation.tryParse(id);
             if (r != null) return r;
         }
-        m = java.util.regex.Pattern.compile("minecraft:[a-z0-9_]+").matcher(lower);
-        if (m.find()) return ResourceLocation.tryParse(m.group(0));
+        m = java.util.regex.Pattern.compile("([a-z0-9_.-]+:[a-z0-9_./-]+)").matcher(lower);
+        if (m.find()) return ResourceLocation.tryParse(m.group(1));
         return null;
     }
 
@@ -1044,7 +1014,7 @@ public class DrawingScreen extends Screen {
             int n = Math.min(lines.size(), 2);
             for (int i = 0; i < n; i++)
                 g.drawString(font, lines.get(i), stripX + 6, stripY + 18 + i * 11, 0xFFE8E8E8);
-            if (aiThinking != null && !aiThinking.isBlank()) {
+            if (AiConfig.get().showThinking && aiThinking != null && !aiThinking.isBlank()) {
                 String head = "§dAI 思考：" + aiThinking;
                 var tl = font.split(Component.literal(head), stripW - 12);
                 int ty = stripY + 18 + n * 11 + 1;

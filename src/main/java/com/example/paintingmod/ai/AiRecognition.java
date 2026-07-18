@@ -104,10 +104,12 @@ public final class AiRecognition {
         prompt.append(ModConfigFiles.readAppraisalPrompt());
 
         // 2) inject the authoritative allowlist so cold / unpopular entries are just as
-        //    reachable as popular ones (the model is told the exact vocabulary it may use)
+        //    reachable as popular ones (the model is told the exact vocabulary it may use).
+        //    Only vanilla ids are injected to keep the prompt small; mod items are still
+        //    grantable because the full registry is written to rewards.json on first run.
         prompt.append("\n\n【可发放清单】 (只可从中选择，不要编造清单外的东西)\n");
-        prompt.append("· 物品: ").append(String.join(" ", RewardTable.itemIds())).append("\n");
-        prompt.append("· 生物: ").append(String.join(" ", RewardTable.entityIds())).append("\n");
+        prompt.append("· 物品: ").append(String.join(" ", RewardTable.itemIdsVanilla())).append("\n");
+        prompt.append("· 生物: ").append(String.join(" ", RewardTable.entityIdsVanilla())).append("\n");
         prompt.append("· 状态效果: ").append(String.join(" ", RewardTable.effectIds())).append("\n");
         prompt.append("· 指令(关键词→命令): ").append(String.join("  ", RewardTable.commandKeys())).append("\n");
 
