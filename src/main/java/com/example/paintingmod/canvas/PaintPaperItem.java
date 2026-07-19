@@ -8,6 +8,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
 /**
  * A handheld paint paper. Right-click opens the pixel-paint GUI directly on the client
@@ -27,17 +29,20 @@ public class PaintPaperItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        // Open the GUI on the client only. The guarded branch is never reached on a server,
-        // so the client-only DrawingScreen / Minecraft references are never linked there.
-        if (level.isClientSide()) {
-            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
-            int size = Math.max(16, Math.min(ModConfig.maxCanvasSize.get(), ModConfig.defaultCanvasSize.get()));
-            PaintingData data = new PaintingData(size, size); // blank, filled with Palette.BACKING
-            // pos = null -> handheld session. onSave is a no-op: the appraise button ships the
-            // pixels to the server itself, so there is nothing to mirror back onto a block.
-            mc.setScreen(new DrawingScreen(data, (w, h, px) -> { }, null, true));
-        }
+        // Only the client opens the GUI. The guarded branch is never reached on a server,
+        // and the client-only DrawingScreen / Minecraft references live in openPaintGui()
+        // (marked @OnlyIn(Dist.CLIENT)), so no client class is ever linked on the server.
+        if (level.isClientSide()) openPaintGui();
         // SUCCESS (client side) stops the item being "used up" and keeps it reusable.
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private void openPaintGui() {
+        int size = Math.max(16, Math.min(ModConfig.maxCanvasSize.get(), ModConfig.defaultCanvasSize.get()));
+        PaintingData data = new PaintingData(size, size); // blank, filled with Palette.BACKING
+        // pos = null -> handheld session. onSave is a no-op: the appraise button ships the
+        // pixels to the server itself, so there is nothing to mirror back onto a block.
+        net.minecraft.client.Minecraft.getInstance().setScreen(new DrawingScreen(data, (w, h, px) -> { }, null, true));
     }
 }

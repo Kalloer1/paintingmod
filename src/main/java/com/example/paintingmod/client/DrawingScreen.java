@@ -519,7 +519,7 @@ public class DrawingScreen extends Screen {
         final int w = data.width, h = data.height;
         final int[] px = data.pixels.clone();
         aiThinking = "";
-        com.example.paintingmod.ai.AiRecognition.recognize(data.copy(),
+        com.example.paintingmod.client.AiRecognition.recognize(data.copy(),
                 res -> {
                     aiBusy = false;
                     if (res.reasoning != null && !res.reasoning.isBlank()) aiThinking = res.reasoning;

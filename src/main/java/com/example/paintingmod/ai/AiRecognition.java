@@ -1,5 +1,6 @@
-package com.example.paintingmod.ai;
+package com.example.paintingmod.client;
 
+import com.example.paintingmod.ai.AiConfig;
 import com.example.paintingmod.ai.RewardTable;
 import com.example.paintingmod.canvas.PaintingData;
 import com.example.paintingmod.canvas.Palette;
