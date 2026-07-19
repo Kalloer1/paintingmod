@@ -1,5 +1,6 @@
 package com.example.paintingmod.client;
 
+import com.example.paintingmod.ClientGuiProxy;
 import com.example.paintingmod.PixelCanvas;
 import com.example.paintingmod.client.CanvasRenderer;
 import com.example.paintingmod.registry.ModBlocks;
@@ -26,5 +27,13 @@ public final class ClientModEvents {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         BlockEntityRenderers.register(ModBlocks.CANVAS_BE.get(), CanvasRenderer::new);
+        // Wire the common ClientGuiProxy bridge to the real client-only handlers. On a
+        // dedicated server this method never runs, so the proxy fields stay null (safe no-ops).
+        ClientGuiProxy.initClient(
+                ClientGuiOpener::openPaintGui,
+                ClientGuiOpener::openStubGui,
+                ClientMiniUpdateHandler::applyToClient,
+                ClientHandlers::handleOpenCanvas,
+                ClientHandlers::handleDenied);
     }
 }

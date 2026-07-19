@@ -1,10 +1,9 @@
 package com.example.paintingmod.network;
 
+import com.example.paintingmod.ClientGuiProxy;
 import com.example.paintingmod.PixelCanvas;
 import com.example.paintingmod.canvas.CanvasBlockEntity;
-import com.example.paintingmod.client.DrawingScreen;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -41,17 +40,9 @@ public record CanvasMiniUpdatePacket(int[] indices, int[] values, BlockPos pos) 
     public static void handle(CanvasMiniUpdatePacket p, IPayloadContext ctx) {
         if (ctx.flow().isClientbound()) {
             // Client side: apply the broadcast stroke to the local block entity / GUI.
-            ctx.enqueueWork(() -> {
-                Minecraft mc = Minecraft.getInstance();
-                if (mc.level == null) return;
-                BlockEntity e = mc.level.getBlockEntity(p.pos());
-                if (!(e instanceof CanvasBlockEntity cbe)) return;
-                int n = Math.min(p.indices().length, p.values().length);
-                for (int i = 0; i < n; i++) cbe.setPixel(p.indices()[i], p.values()[i]);
-                cbe.bumpRenderVersion();
-                if (mc.screen instanceof DrawingScreen ds && ds.getPos() != null && ds.getPos().equals(p.pos()))
-                    ds.reloadPixels(cbe.getPixels());
-            });
+            // Delegated to the common ClientGuiProxy bridge so this packet class never
+            // references a client-only type in its constant pool (dedicated-server safe).
+            ctx.enqueueWork(() -> ClientGuiProxy.applyMiniUpdate(p));
         } else {
             // Server side: validate and apply, then broadcast to nearby players.
             ctx.enqueueWork(() -> {

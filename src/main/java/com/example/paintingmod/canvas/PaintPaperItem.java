@@ -1,19 +1,20 @@
 package com.example.paintingmod.canvas;
 
-import com.example.paintingmod.client.DrawingScreen;
-import com.example.paintingmod.config.ModConfig;
+import com.example.paintingmod.ClientGuiProxy;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 
 /**
  * A handheld paint paper. Right-click opens the pixel-paint GUI directly on the client
  * — no placement, no block entity, no server round-trip needed to start drawing.
+ *
+ * The GUI open is delegated to {@link ClientGuiProxy#openPaintGui()}, a common-side bridge
+ * that resolves to the real client-only screen opener only on the client. This item class
+ * therefore never references a client-only type, so it loads safely on a dedicated server.
  *
  * The appraise button (inside the GUI) still runs the full AI flow: it snapshots the
  * pixels and sends a {@code CanvasAppraisalPacket} with an absent position. The server
@@ -29,20 +30,10 @@ public class PaintPaperItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        // Only the client opens the GUI. The guarded branch is never reached on a server,
-        // and the client-only DrawingScreen / Minecraft references live in openPaintGui()
-        // (marked @OnlyIn(Dist.CLIENT)), so no client class is ever linked on the server.
-        if (level.isClientSide()) openPaintGui();
+        // Only ever true on the client; the proxy is a common bridge, so no client type is
+        // referenced from this common item class.
+        if (level.isClientSide()) ClientGuiProxy.openPaintGui();
         // SUCCESS (client side) stops the item being "used up" and keeps it reusable.
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    private void openPaintGui() {
-        int size = Math.max(16, Math.min(ModConfig.maxCanvasSize.get(), ModConfig.defaultCanvasSize.get()));
-        PaintingData data = new PaintingData(size, size); // blank, filled with Palette.BACKING
-        // pos = null -> handheld session. onSave is a no-op: the appraise button ships the
-        // pixels to the server itself, so there is nothing to mirror back onto a block.
-        net.minecraft.client.Minecraft.getInstance().setScreen(new DrawingScreen(data, (w, h, px) -> { }, null, true));
     }
 }

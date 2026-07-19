@@ -1,7 +1,7 @@
 package com.example.paintingmod.network;
 
+import com.example.paintingmod.ClientGuiProxy;
 import com.example.paintingmod.PixelCanvas;
-import com.example.paintingmod.client.ClientHandlers;
 import com.example.paintingmod.network.CanvasAppraisalPacket;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
@@ -21,9 +21,12 @@ public final class ModPackets {
         r.playToServer(CanvasEndStrokePacket.TYPE, CanvasEndStrokePacket.STREAM_CODEC, CanvasEndStrokePacket::handle);
         r.playToServer(CanvasAppraisalPacket.TYPE, CanvasAppraisalPacket.STREAM_CODEC, CanvasAppraisalPacket::handle);
         r.playToServer(CanvasCloseConsumePacket.TYPE, CanvasCloseConsumePacket.STREAM_CODEC, CanvasCloseConsumePacket::handle);
-        // server -> client
-        r.playToClient(CanvasOpenPacket.TYPE, CanvasOpenPacket.STREAM_CODEC, ClientHandlers::handleOpenCanvas);
-        r.playToClient(CanvasStrokeDeniedPacket.TYPE, CanvasStrokeDeniedPacket.STREAM_CODEC, ClientHandlers::handleDenied);
+        // server -> client: handlers run only on the client. They are wired through the
+        // common ClientGuiProxy bridge (populated on the client at startup), so this common
+        // registration class never references a client-only type — dedicated servers load it
+        // without crashing.
+        r.playToClient(CanvasOpenPacket.TYPE, CanvasOpenPacket.STREAM_CODEC, ClientGuiProxy::handleOpenCanvas);
+        r.playToClient(CanvasStrokeDeniedPacket.TYPE, CanvasStrokeDeniedPacket.STREAM_CODEC, ClientGuiProxy::handleDenied);
         // bidirectional: player strokes go to server, server broadcasts them back to nearby players
         r.playBidirectional(CanvasMiniUpdatePacket.TYPE, CanvasMiniUpdatePacket.STREAM_CODEC, CanvasMiniUpdatePacket::handle);
     }
