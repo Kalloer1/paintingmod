@@ -40,4 +40,10 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 21
 }
 
+processResources {
+    filesMatching('META-INF/neoforge.mods.toml') {
+        filter { line -> line.replace('${mod_version}', project.mod_version) }
+    }
+}
+
 tasks.named('test', Test) { useJUnitPlatform() }

@@ -4,9 +4,9 @@ license="MIT"
 
 [[mods]]
 modId="paintingmod"
-version="0.1.0"
+version="${mod_version}"
 displayName="Pixel Canvas"
-description="An in-game pixel canvas: draw on a block, sync it to other players, and (soon) let AI recognize your art."
+description="An in-game pixel canvas: draw on placed paper, sync live strokes to nearby players, and let AI recognize your art."
 authors="Kalloer1"
 
 [[dependencies.paintingmod]]
