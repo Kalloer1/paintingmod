@@ -32,6 +32,8 @@ import java.util.function.Consumer;
 public final class AiRecognition {
     private static final Logger LOGGER = LogManager.getLogger("PaintingModAI");
     private static final HttpClient CLIENT = HttpClient.newHttpClient();
+    /** 非纸像素数低于此阈值时，跳过 API、改本地按主色发基础奖励（省 token，毫秒级）。 */
+    private static final int SPARSE_THRESHOLD = 20;
 
     /** What the vision model gave us back. {@code reasoning} is the model's thinking
      *  trace (GLM "深度思考" -> reasoning_content). May be blank for models without it. */
@@ -54,9 +56,29 @@ public final class AiRecognition {
         final int w = data.width, h = data.height;
         final int[] px = data.pixels.clone();
 
+        // ---- local sparse fallback: skip the API entirely for tiny sketches ----
+        int nonPaper = 0, rSum = 0, gSum = 0, bSum = 0, n = 0;
+        for (int v : px) {
+            if (v < 0) continue;               // paper / blank pixel
+            nonPaper++;
+            rSum += (v >> 16) & 0xFF;
+            gSum += (v >> 8) & 0xFF;
+            bSum += v & 0xFF;
+            n++;
+        }
+        if (nonPaper > 0 && nonPaper < SPARSE_THRESHOLD) {
+            int dr = rSum / n, dg = gSum / n, db = bSum / n;
+            String grant = ModConfigFiles.localColorReward(dr, dg, db);
+            if (grant != null) {
+                final String content = "Sparse sketch — local appraisal by dominant colour.\nGRANT|" + grant;
+                Minecraft.getInstance().execute(() -> onResult.accept(new Result(content, "")));
+                return;
+            }
+        }
+
         CompletableFuture.supplyAsync(() -> {
             try {
-                String b64 = encodePng(w, h, px);
+                String b64 = encodePng(w, h, px, cfg.upscale);
                 RewardTable.reload(); // pick up any edits to rewards.json
                 String body = buildBody(cfg, b64);
                 String url = cfg.apiBase;
@@ -86,7 +108,7 @@ public final class AiRecognition {
         });
     }
 
-    private static String encodePng(int w, int h, int[] px) throws Exception {
+    private static String encodePng(int w, int h, int[] px, boolean upscale) throws Exception {
         BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
         int[] rgb = new int[w * h];
         for (int i = 0; i < rgb.length; i++) {
@@ -94,29 +116,41 @@ public final class AiRecognition {
             rgb[i] = (v < 0) ? Palette.PAPER : v;
         }
         img.setRGB(0, 0, w, h, rgb, 0, w);
+        if (upscale) {
+            int s = 4;
+            BufferedImage big = new BufferedImage(w * s, h * s, BufferedImage.TYPE_INT_RGB);
+            java.awt.Graphics2D g = big.createGraphics();
+            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                    java.awt.RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+            g.drawImage(img, 0, 0, w * s, h * s, null);
+            g.dispose();
+            img = big;
+        }
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(img, "png", baos);
         return Base64.getEncoder().encodeToString(baos.toByteArray());
     }
 
+    /**
+     * Build the request body.
+     *
+     * Caching: the large STATIC prefix (instructions + reward allowlist) is placed in the
+     * {@code system} role and stays byte-identical across calls, so SiliconFlow reuses the
+     * cached prefix and only bills the image + tiny trigger text each round. The only
+     * per-request variable is the image in the {@code user} message.
+     */
     private static String buildBody(AiConfig cfg, String b64) {
-        // 1) base instructions — hot-editable in config/paintingmod/appraisal_prompt.txt
-        StringBuilder prompt = new StringBuilder();
-        prompt.append(ModConfigFiles.readAppraisalPrompt());
+        // 1) stable system prefix — hot-editable instructions + authoritative allowlist
+        String systemText = ModConfigFiles.readAppraisalPrompt() + "\n\n" + allowlist();
 
-        // 2) inject the authoritative allowlist so cold / unpopular entries are just as
-        //    reachable as popular ones (the model is told the exact vocabulary it may use).
-        //    Only vanilla ids are injected to keep the prompt small; mod items are still
-        //    grantable because the full registry is written to rewards.json on first run.
-        prompt.append("\n\n【可发放清单】 (只可从中选择，不要编造清单外的东西)\n");
-        prompt.append("· 物品: ").append(String.join(" ", RewardTable.itemIdsVanilla())).append("\n");
-        prompt.append("· 生物: ").append(String.join(" ", RewardTable.entityIdsVanilla())).append("\n");
-        prompt.append("· 状态效果: ").append(String.join(" ", RewardTable.effectIds())).append("\n");
-        prompt.append("· 指令(关键词→命令): ").append(String.join("  ", RewardTable.commandKeys())).append("\n");
+        JsonObject sysMsg = new JsonObject();
+        sysMsg.addProperty("role", "system");
+        sysMsg.addProperty("content", systemText);
 
+        // 2) user message — minimal trigger text + the picture (the only changing part)
         JsonObject textPart = new JsonObject();
         textPart.addProperty("type", "text");
-        textPart.addProperty("text", prompt.toString());
+        textPart.addProperty("text", "Appraise this pixel painting and follow the instructions exactly.");
 
         JsonObject imgPart = new JsonObject();
         imgPart.addProperty("type", "image_url");
@@ -128,17 +162,13 @@ public final class AiRecognition {
         content.add(textPart);
         content.add(imgPart);
 
-        JsonObject message = new JsonObject();
-        message.addProperty("role", "user");
-        message.add("content", content);
-
-        JsonObject system = new JsonObject();
-        system.addProperty("role", "system");
-        system.addProperty("content", "你是一个简洁的《我的世界 1.21.1》绘画奖励鉴定器。只输出用户要求的正好 7 行中文，不要输出任何分析、推理或额外文字。");
+        JsonObject userMsg = new JsonObject();
+        userMsg.addProperty("role", "user");
+        userMsg.add("content", content);
 
         JsonArray messages = new JsonArray();
-        messages.add(system);
-        messages.add(message);
+        messages.add(sysMsg);
+        messages.add(userMsg);
 
         JsonObject root = new JsonObject();
         root.addProperty("model", cfg.model);
@@ -152,6 +182,17 @@ public final class AiRecognition {
             root.add("thinking", th);
         }
         return root.toString();
+    }
+
+    /** Authoritative, stable reward vocabulary injected into the system prompt. */
+    private static String allowlist() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("ALLOWED REWARD VOCABULARY (choose ONLY from these, never invent):\n");
+        sb.append("· items: ").append(String.join(" ", RewardTable.itemIdsVanilla())).append("\n");
+        sb.append("· entities: ").append(String.join(" ", RewardTable.entityIdsVanilla())).append("\n");
+        sb.append("· effects: ").append(String.join(" ", RewardTable.effectIds())).append("\n");
+        sb.append("· commands (keyword->command): ").append(String.join("  ", RewardTable.commandKeys())).append("\n");
+        return sb.toString();
     }
 
     private static Result parseContent(String json) {

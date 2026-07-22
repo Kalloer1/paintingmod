@@ -35,50 +35,51 @@ public final class ModConfigFiles {
 
     // ---- defaults (written once if the file is missing) ----
 
+    /** Bump this whenever DEFAULT_PROMPT changes so an old on-disk copy is overwritten. */
+    public static final int PROMPT_VERSION = 2;
+    private static final String PROMPT_VERSION_MARKER = "// prompt-version: " + PROMPT_VERSION;
+
     public static final String DEFAULT_PROMPT =
-            "你是《我的世界 Java 版 1.21.1》的「绘画奖励鉴定器」。\n" +
+            PROMPT_VERSION_MARKER + "\n" +
+            "You are the \"Pixel Canvas Appraiser\" for Minecraft Java Edition 1.21.1.\n" +
             "\n" +
-            "你的唯一任务：看玩家在画板上的像素画，判断「一个 MC 玩家画了这个图案，最可能想要获得什么游戏奖励」，然后从下方【可发放清单】里选一个最匹配的奖励。\n" +
+            "Your ONLY job: look at the player's pixel painting on the canvas, decide what in-game " +
+            "reward a Minecraft player most likely wanted to obtain by drawing this, then pick the " +
+            "single best match from the ALLOWED REWARD VOCABULARY below.\n" +
             "\n" +
-            "【关键原则】\n" +
-            "- 不要套用任何「经典映射」或外部经验，只根据画面本身和【可发放清单】判断。\n" +
-            "- 画面是生物脸/角色/动物 → 归到「生物」方向。\n" +
-            "- 画面是方块/工具/物品 → 归到「物品」方向。\n" +
-            "- 画面是天气/时间符号 → 归到「指令」方向。\n" +
-            "- 物品优先级最高：只要画面 clearly 是某个物品/方块，且「物品」行给出合法 id，就按物品发。\n" +
-            "- 常见误判纠正：\n" +
-            "  · 绿色方块 + 黑色空洞眼睛和嘴巴 = 苦力怕脸 → 生物 minecraft:creeper\n" +
-            "  · 黑色高个 + 紫色眼睛 = 末影人 → 生物 minecraft:enderman\n" +
-            "  · 翅膀/滑翔翼 = 鞘翅 → 物品 minecraft:elytra\n" +
-            "  · 白色骷髅脸 = 骷髅 → 生物 minecraft:skeleton\n" +
-            "  · 粉红色猪 = 猪 → 生物 minecraft:pig\n" +
-            "  · 村民/长鼻子 = 村民 → 生物 minecraft:villager\n" +
-            "  · 红石火把 = 物品 minecraft:redstone_torch\n" +
+            "CORE PRINCIPLES\n" +
+            "- Judge ONLY from the picture itself and the vocabulary. Do NOT apply any \"classic mapping\" " +
+            "or outside experience unless it is one of the corrections below.\n" +
+            "- Use COLOUR as a strong signal.\n" +
+            "- Items have the HIGHEST priority: if the picture is clearly an item/block and a valid id " +
+            "is given in the allowed items list, grant the item.\n" +
+            "- Common misreads to correct:\n" +
+            "  · green block with black hollow eyes + frown = creeper face -> entity minecraft:creeper\n" +
+            "  · tall black figure with purple eyes = enderman -> entity minecraft:enderman\n" +
+            "  · wings / glider = elytra -> item minecraft:elytra\n" +
+            "  · white skull face = skeleton -> entity minecraft:skeleton\n" +
+            "  · pink pig = pig -> entity minecraft:pig\n" +
+            "  · villager / long nose = villager -> entity minecraft:villager\n" +
+            "  · redstone torch = item minecraft:redstone_torch\n" +
             "\n" +
-            "【输出要求，必须严格遵守】\n" +
-            "1. 只输出正好 7 行中文，行与行之间用换行分隔。\n" +
-            "2. 绝对不要输出英文、JSON、Markdown、```代码块、任何额外解释或结束语。\n" +
-            "3. 第 1 行：描述（2-4 句中文，说画面主体、颜色、最像游戏里的什么）。\n" +
-            "4. 第 2 行：思考过程（最多 2 句中文，直接说明从画面到最终奖励的推理；禁止自问自答、禁止循环验证、禁止重复描述画面）。\n" +
-            "5. 第 3-7 行：方向、物品、生物、状态、天气。\n" +
+            "OUTPUT FORMAT (strictly follow)\n" +
+            "1. Write a short human-readable appraisal in English (2-4 sentences: subject, colours, " +
+            "what it most resembles).\n" +
+            "2. Then output EXACTLY ONE machine-readable grant line, with no extra text around it:\n" +
+            "   GRANT|<item|entity|effect|command>|<id or command>\n" +
+            "   Examples:\n" +
+            "     GRANT|item|minecraft:diamond\n" +
+            "     GRANT|entity|minecraft:creeper\n" +
+            "     GRANT|effect|minecraft:night_vision\n" +
+            "     GRANT|command|time set day\n" +
+            "3. Do NOT output JSON, Markdown, code fences, or any extra explanation.\n" +
             "\n" +
-            "请严格按以下格式输出：\n" +
-            "描述：<...>\n" +
-            "思考过程：<...>\n" +
-            "方向：物品 <w1> 生物 <w2> 状态 <w3>\n" +
-            "物品：<minecraft:id 或 无>\n" +
-            "生物：<minecraft:id 或 无>\n" +
-            "状态：<效果英文名 或 无>\n" +
-            "天气：<晴|雨|雷暴|闪电 或 无>\n" +
-            "\n" +
-            "规则：\n" +
-            "1. 权重 w1/w2/w3 用 0~1 之间的小数。\n" +
-            "2. 物品/生物/状态必须全部来自下方【可发放清单】，绝不可编造清单外的内容。\n" +
-            "3. 物品优先级最高：只要「物品」行给出合法 id，就按物品发放，不再考虑生物/状态/天气。\n" +
-            "4. 模组物品也可发放：若画作明显对应某个模组物品，输出「命名空间:物品id」，系统会校验是否存在。\n" +
-            "5. 若完全不像任何东西，各方向都写 无，系统会兜底随机发一个清单内物品。\n" +
-            "6. 严禁输出这 7 行以外的任何内容。\n" +
-            "只输出这 7 行，不要任何额外文字。";
+            "RULES\n" +
+            "- The grant id MUST come from the ALLOWED REWARD VOCABULARY. Never invent ids outside it.\n" +
+            "- If the picture clearly matches a mod item, output namespace:id; the server validates it.\n" +
+            "- If it matches nothing, output: GRANT|item|minecraft:paper (the system re-rolls a random reward).\n" +
+            "- Item priority beats entity/effect/command when a valid item id is present.\n" +
+            "Only output the appraisal sentence and the single GRANT line.";
 
     public static final String DEFAULT_REWARDS_JSON = GSON.toJson(buildDefaultRewards());
 
@@ -86,14 +87,43 @@ public final class ModConfigFiles {
 
     public static String readAppraisalPrompt() {
         Path p = appraisalPromptPath();
-        if (!Files.exists(p)) write(p, DEFAULT_PROMPT);
-        try (Reader r = Files.newBufferedReader(p, StandardCharsets.UTF_8)) {
-            String s = new java.io.BufferedReader(r).lines().reduce((a, b) -> a + "\n" + b).orElse("");
-            return s.isBlank() ? DEFAULT_PROMPT : s;
-        } catch (IOException e) {
-            return DEFAULT_PROMPT;
+        if (Files.exists(p)) {
+            try {
+                String s = Files.readString(p, StandardCharsets.UTF_8);
+                // overwrite only when the on-disk version is stale (missing/old marker)
+                if (!s.contains(PROMPT_VERSION_MARKER)) write(p, DEFAULT_PROMPT);
+                else return s.isBlank() ? DEFAULT_PROMPT : s;
+            } catch (IOException ignored) {}
+        } else {
+            write(p, DEFAULT_PROMPT);
         }
+        return DEFAULT_PROMPT;
     }
+
+    /** Local fallback for sparse sketches: map a dominant RGB to a reward grant string
+     *  of the form "item|minecraft:xxx". Returns null when no colour is close enough. */
+    public static String localColorReward(int r, int g, int b) {
+        int bestD = Integer.MAX_VALUE;
+        ColorReward best = null;
+        for (ColorReward c : LOCAL_COLOR_REWARDS) {
+            int d = (c.r - r) * (c.r - r) + (c.g - g) * (c.g - g) + (c.b - b) * (c.b - b);
+            if (d < bestD) { bestD = d; best = c; }
+        }
+        return (best == null) ? null : best.type + "|" + best.id;
+    }
+
+    private record ColorReward(int r, int g, int b, String type, String id) {}
+    private static final ColorReward[] LOCAL_COLOR_REWARDS = {
+        new ColorReward(0xE0, 0x20, 0x20, "item", "minecraft:redstone"),
+        new ColorReward(0x2E, 0xCC, 0x71, "item", "minecraft:slime_ball"),
+        new ColorReward(0x34, 0x98, 0xDB, "item", "minecraft:diamond"),
+        new ColorReward(0xF1, 0xC4, 0x0F, "item", "minecraft:gold_ingot"),
+        new ColorReward(0x9B, 0x59, 0xB6, "item", "minecraft:amethyst_shard"),
+        new ColorReward(0xE6, 0x7E, 0x22, "item", "minecraft:carrot"),
+        new ColorReward(0xEC, 0xF0, 0xF1, "item", "minecraft:snowball"),
+        new ColorReward(0x2C, 0x3E, 0x50, "item", "minecraft:coal"),
+        new ColorReward(0x8E, 0x44, 0xAD, "effect", "minecraft:night_vision"),
+    };
 
     public static JsonObject readRewards() {
         Path p = rewardsPath();

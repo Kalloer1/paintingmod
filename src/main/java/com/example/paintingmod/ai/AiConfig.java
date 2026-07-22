@@ -32,10 +32,12 @@ public final class AiConfig {
     /** 是否在界面结果与聊天栏展示 AI 的「思考过程」。与 think 解耦：
      *  可以只让模型在后台思考（think=true）但不向玩家显示（showThinking=false）。 */
     public boolean showThinking = true;
-    /** 生成温度，0(确定性)~1(发散)，默认 0.5。 */
-    public double temperature = 0.5;
-    /** 单次回复最大 token，需覆盖「思考 + 6 行结果」，默认 1500。 */
+    /** 生成温度，0(确定性)~1(发散)。受限分类识别用 0.2 更稳（默认 0.5 易发散）。 */
+    public double temperature = 0.2;
+    /** 单次回复最大 token，需覆盖「思考 + 结果」，默认 1500。 */
     public int maxTokens = 1500;
+    /** 识别前对像素画做最近邻 4× 放大，小画布识别更准（默认关，会增大图片 token）。 */
+    public boolean upscale = false;
 
     private static volatile AiConfig INSTANCE = load();
 

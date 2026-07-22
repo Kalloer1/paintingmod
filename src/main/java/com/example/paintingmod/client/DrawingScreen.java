@@ -602,6 +602,10 @@ public class DrawingScreen extends Screen {
             }
         }
 
+        // 权威机器可读授予行 GRANT|<type>|<id>（语言无关），优先于启发式解析
+        Effect ge = tryParseGrant(text);
+        if (ge != null) return ge;
+
         // 兼容「JSON 格式」提示词（如用户自写的 action/item/id 结构）：先尝试解析
         Effect je = tryParseJson(text);
         if (je != null) return je;
@@ -648,6 +652,69 @@ public class DrawingScreen extends Screen {
         }
 
         // 没有任何可识别结果 -> 兜底发一个清单内真实物品，保证鉴定总有产出
+        RewardTable.Entry e = RewardTable.random();
+        return new Effect(CanvasAppraisalPacket.EFFECT_ITEM, e.id.toString(), (byte) 0, desc);
+    }
+
+    /** Parse the authoritative machine-readable grant line:
+     *  {@code GRANT|<item|entity|effect|command>|<id or command>}.
+     *  Returns null if no such line is present, so the caller falls back to older parsers. */
+    private static final java.util.regex.Pattern GRANT_RE =
+            java.util.regex.Pattern.compile("(?im)^\\s*GRANT\\|([a-z]+)\\|(.+?)\\s*$");
+
+    private Effect tryParseGrant(String text) {
+        if (text == null) return null;
+        java.util.regex.Matcher m = GRANT_RE.matcher(text);
+        if (!m.find()) return null;
+
+        String type = m.group(1).toLowerCase(java.util.Locale.ROOT);
+        String id = m.group(2).trim();
+
+        // first non-grant, non-empty line becomes the display description
+        String desc = text.trim();
+        for (String ln : text.split("\n")) {
+            String t = ln.trim();
+            if (t.isEmpty() || GRANT_RE.matcher(t).matches()) continue;
+            desc = t;
+            break;
+        }
+
+        return switch (type) {
+            case "item", "block" -> {
+                ResourceLocation rl = parseMcId(id);
+                if (rl == null) yield null;
+                if (rl.toString().equals("minecraft:paper")) yield randomFallback(desc); // "nothing matched" sentinel
+                yield RewardTable.isItemAllowed(rl)
+                        ? new Effect(CanvasAppraisalPacket.EFFECT_ITEM, rl.toString(), (byte) 0, desc) : null;
+            }
+            case "entity", "summon" -> {
+                ResourceLocation rl = parseMcId(id);
+                yield (rl != null && RewardTable.isEntityAllowed(rl))
+                        ? new Effect(CanvasAppraisalPacket.EFFECT_ENTITY, rl.toString(), (byte) 0, desc) : null;
+            }
+            case "effect", "potion" -> {
+                ResourceLocation rl = resolveEffectId(id);
+                yield rl != null ? new Effect(CanvasAppraisalPacket.EFFECT_POTION, rl.toString(), (byte) 0, desc) : null;
+            }
+            case "command" -> {
+                String lc = id.toLowerCase(java.util.Locale.ROOT);
+                if (lc.contains("lightning") || lc.contains("闪电"))
+                    yield new Effect(CanvasAppraisalPacket.EFFECT_LIGHTNING, null, (byte) 0, desc);
+                if (lc.contains("thunder") || lc.contains("雷暴") || lc.contains("雷"))
+                    yield new Effect(CanvasAppraisalPacket.EFFECT_WEATHER_THUNDER, null, (byte) 0, desc);
+                if (lc.contains("clear") || lc.contains("晴"))
+                    yield new Effect(CanvasAppraisalPacket.EFFECT_WEATHER_CLEAR, null, (byte) 0, desc);
+                if (lc.contains("rain") || lc.contains("雨") || lc.contains("weather"))
+                    yield new Effect(CanvasAppraisalPacket.EFFECT_WEATHER_RAIN, null, (byte) 0, desc);
+                yield RewardTable.isCommandAllowed(id)
+                        ? new Effect(CanvasAppraisalPacket.EFFECT_COMMAND, id, (byte) 0, desc) : null;
+            }
+            default -> null;
+        };
+    }
+
+    /** Always-grant-something fallback used by the GRANT sentinel and unparsed replies. */
+    private Effect randomFallback(String desc) {
         RewardTable.Entry e = RewardTable.random();
         return new Effect(CanvasAppraisalPacket.EFFECT_ITEM, e.id.toString(), (byte) 0, desc);
     }
